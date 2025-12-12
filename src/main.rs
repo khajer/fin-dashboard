@@ -2,6 +2,7 @@ use actix_web::{App, Error, HttpRequest, HttpResponse, HttpServer, Responder, ge
 use actix_ws::AggregatedMessage;
 use futures_util::StreamExt as _;
 
+use serde::Serialize;
 use tracing::info;
 use tracing_subscriber::fmt;
 
@@ -11,6 +12,22 @@ fn setup_logging() {
         .with_max_level(tracing::Level::INFO)
         .init();
 }
+#[derive(Serialize)]
+struct HealthStatus {
+    status: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    version: Option<String>,
+}
+#[get("/health")]
+async fn health_check() -> Result<impl Responder, Error> {
+    let status = HealthStatus {
+        status: "ok".to_string(),
+        version: Some("1.0.0".to_string()),
+    };
+    Ok(web::Json(status))
+}
+
 #[get("/")]
 async fn hello() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
@@ -55,6 +72,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         App::new()
             .service(hello)
+            .service(health_check)
             .service(web::resource("/ws").route(web::get().to(echo)))
     })
     .bind(host)?
