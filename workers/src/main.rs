@@ -1,4 +1,8 @@
+use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
+use tokio::net::TcpStream;
+use tokio_tungstenite::MaybeTlsStream;
+use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use url::Url;
 
@@ -19,52 +23,66 @@ async fn main() {
         println!("* {}: {:?}", header, value);
     }
 
-    let (mut write, mut read) = ws_stream.split();
+    let (mut write, read) = ws_stream.split();
 
-    // Send a message
+    // greeting message
     let message = Message::Text("Hello, WebSocket!".into());
     if let Err(e) = write.send(message).await {
         eprintln!("Failed to send message: {}", e);
         return;
     }
-    println!("Sent message: Hello, WebSocket!");
 
-    // Receive messages
-    while let Some(msg) = read.next().await {
-        match msg {
-            Ok(Message::Text(text)) => {
-                println!("Received text: {}", text);
-                break;
-            }
-            Ok(Message::Binary(bin)) => {
-                println!("Received binary data: {:?}", bin);
-                break;
-            }
-            Ok(Message::Close(_)) => {
-                println!("Received close message");
-                break;
-            }
-            Ok(Message::Ping(data)) => {
-                println!("Received ping: {:?}", data);
-            }
-            Ok(Message::Pong(data)) => {
-                println!("Received pong: {:?}", data);
-            }
-            Ok(Message::Frame(_)) => {
-                // Raw frame, continue processing
-                continue;
-            }
-            Err(e) => {
-                eprintln!("Error receiving message: {}", e);
-                break;
+    let _ = spawn_write_task(write);
+    let _ = spawn_read_task(read);
+}
+
+fn spawn_write_task(
+    mut write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        let message = Message::Text("Hello, WebSocket!".into());
+        if let Err(e) = write.send(message).await {
+            eprintln!("Failed to send message: {}", e);
+        } else {
+            println!("Message sent successfully");
+        }
+    })
+}
+
+fn spawn_read_task(
+    mut read: futures_util::stream::SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        // receeive looping
+        while let Some(msg) = read.next().await {
+            match msg {
+                Ok(Message::Text(text)) => {
+                    println!("Received text: {}", text);
+                    break;
+                }
+                Ok(Message::Binary(bin)) => {
+                    println!("Received binary data: {:?}", bin);
+                    break;
+                }
+                Ok(Message::Close(_)) => {
+                    println!("Received close message");
+                    break;
+                }
+                Ok(Message::Ping(data)) => {
+                    println!("Received ping: {:?}", data);
+                }
+                Ok(Message::Pong(data)) => {
+                    println!("Received pong: {:?}", data);
+                }
+                Ok(Message::Frame(_)) => {
+                    // Raw frame, continue processing
+                    continue;
+                }
+                Err(e) => {
+                    eprintln!("Error receiving message: {}", e);
+                    break;
+                }
             }
         }
-    }
-
-    // Close the connection
-    if let Err(e) = write.send(Message::Close(None)).await {
-        eprintln!("Failed to close connection: {}", e);
-    } else {
-        println!("Connection closed successfully");
-    }
+    })
 }
