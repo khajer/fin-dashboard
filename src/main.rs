@@ -42,6 +42,12 @@ async fn echo(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Er
 
     info!("Client connected from: {}", req.peer_addr().unwrap());
 
+    // send greeting message
+    session
+        .text("welcome to my websocket server!")
+        .await
+        .unwrap();
+
     rt::spawn(async move {
         while let Some(msg) = stream.next().await {
             match msg {
