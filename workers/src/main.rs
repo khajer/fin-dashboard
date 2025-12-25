@@ -1,11 +1,19 @@
 use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
 
+use reqwest::Client;
+use serde::Deserialize;
 use tokio::net::TcpStream;
 use tokio_tungstenite::MaybeTlsStream;
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use url::Url;
+
+#[derive(Debug, Deserialize)]
+struct BinancePriceResponse {
+    symbol: String,
+    price: String,
+}
 
 #[tokio::main]
 async fn main() {
@@ -76,14 +84,32 @@ async fn spawn_write(
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
         loop {
             interval.tick().await;
-            let message = Message::Text("test".into());
-            println!("Sending message: test");
-            if let Err(e) = write.send(message).await {
-                eprintln!("Failed to send message: {}", e);
-                break;
-            } else {
-                println!("Message sent successfully");
+
+            let data = fetch_price().await;
+            match data {
+                Ok(resp) => {
+                    let msg = format!("{}:{}", resp.symbol, resp.price);
+                    println!("Sending message: {msg}");
+                    if let Err(e) = write.send(msg.into()).await {
+                        eprintln!("Failed to send message: {}", e);
+                        break;
+                    } else {
+                        println!("Message sent successfully");
+                    }
+                }
+                Err(_e) => {}
             }
         }
     })
+}
+
+async fn fetch_price() -> Result<BinancePriceResponse, reqwest::Error> {
+    let client = Client::new();
+    let response = client
+        .get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT")
+        .send()
+        .await?
+        .json::<BinancePriceResponse>()
+        .await?;
+    Ok(response)
 }
