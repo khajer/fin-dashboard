@@ -2,9 +2,14 @@ use actix_web::{App, Error, HttpRequest, HttpResponse, HttpServer, Responder, ge
 use actix_ws::AggregatedMessage;
 use futures_util::StreamExt as _;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tracing::info;
 use tracing_subscriber::fmt;
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Username {
+    username: String,
+}
 
 fn setup_logging() {
     fmt()
@@ -19,6 +24,13 @@ struct HealthStatus {
     #[serde(skip_serializing_if = "Option::is_none")]
     version: Option<String>,
 }
+
+#[derive(Debug, Serialize)]
+struct LoginResponse {
+    status: String,
+    cmd: String,
+}
+
 #[get("/health")]
 async fn health_check() -> Result<impl Responder, Error> {
     let status = HealthStatus {
@@ -42,17 +54,23 @@ async fn echo(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Er
 
     info!("Client connected from: {}", req.peer_addr().unwrap());
 
-    // send greeting message
-    session
-        .text("welcome to my websocket server!")
-        .await
-        .unwrap();
-
     rt::spawn(async move {
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(AggregatedMessage::Text(text)) => {
-                    session.text(text).await.unwrap();
+                    println!("recv : {}", text);
+                    let usr = serde_json::from_str::<Username>(&text).unwrap();
+                    if usr.username == "bot" {
+                        let log_resp = LoginResponse {
+                            status: "success".to_string(),
+                            cmd: "BTCUSDT".to_string(),
+                        };
+                        let txt_resp = serde_json::to_string(&log_resp).unwrap();
+
+                        session.text(txt_resp).await.unwrap();
+                    }
+
+                    // session.text("").await.unwrap();
                 }
                 Ok(AggregatedMessage::Binary(bin)) => {
                     session.binary(bin).await.unwrap();

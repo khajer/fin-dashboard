@@ -2,7 +2,7 @@ use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
 
 use reqwest::Client;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::net::TcpStream;
 use tokio_tungstenite::MaybeTlsStream;
 use tokio_tungstenite::WebSocketStream;
@@ -13,6 +13,17 @@ use url::Url;
 struct BinancePriceResponse {
     symbol: String,
     price: String,
+}
+
+#[derive(Debug, Serialize)]
+struct Username {
+    username: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct LoginResponse {
+    status: String,
+    cmd: String,
 }
 
 #[tokio::main]
@@ -32,21 +43,47 @@ async fn main() {
     //     println!("* {}: {:?}", header, value);
     // }
 
-    let (mut write, mut read) = ws_stream.split();
+    let (write_stream, mut read) = ws_stream.split();
+    let mut write = Some(write_stream);
 
-    // greeting message
-    let message = Message::Text("Hi, WebSocket!".into());
-    if let Err(e) = write.send(message).await {
-        eprintln!("Failed to send message: {}", e);
-        return;
+    // bot login
+    let usr = Username {
+        username: "bot".to_string(),
+    };
+    println!("Username: {:?}", usr);
+    let message = serde_json::to_string(&usr).unwrap();
+
+    if let Some(ref mut w) = write {
+        if let Err(e) = w.send(message.into()).await {
+            eprintln!("Failed to send message: {}", e);
+            return;
+        }
     }
 
-    let _ = spawn_write(write).await;
-
+    let mut logined = false;
     while let Some(msg) = read.next().await {
         match msg {
             Ok(Message::Text(text)) => {
-                println!("Received text: {}", text);
+                println!("recv : {}", text);
+                if !logined {
+                    let login_resp = serde_json::from_str::<LoginResponse>(&text);
+                    if let Ok(resp) = login_resp {
+                        if resp.status == "success" {
+                            println!("Login successful");
+
+                            if let Some(w) = write.take() {
+                                println!("write is OK");
+                                // let _ = spawn_write(w, resp.cmd);
+                            } else {
+                                println!("write is None");
+                            }
+                            logined = true;
+                        }
+                    } else {
+                        eprintln!("Failed to parse login response: {}", text);
+                    }
+                }
+
                 if text == "c" {
                     println!("Received exit command 'c', stopping loop...");
                     break;
@@ -79,13 +116,13 @@ async fn main() {
 
 async fn spawn_write(
     mut write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+    cmd: String,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
         loop {
             interval.tick().await;
-
-            let data = fetch_price().await;
+            let data = fetch_price(cmd.clone()).await;
             match data {
                 Ok(resp) => {
                     let msg = format!("{}:{}", resp.symbol, resp.price);
@@ -103,10 +140,14 @@ async fn spawn_write(
     })
 }
 
-async fn fetch_price() -> Result<BinancePriceResponse, reqwest::Error> {
+async fn fetch_price(symbol: String) -> Result<BinancePriceResponse, reqwest::Error> {
     let client = Client::new();
+    let url = format!(
+        "https://api.binance.com/api/v3/ticker/price?symbol={}",
+        symbol
+    );
     let response = client
-        .get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT")
+        .get(url)
         .send()
         .await?
         .json::<BinancePriceResponse>()

@@ -428,6 +428,7 @@ dependencies = [
  "actix-ws",
  "futures-util",
  "serde",
+ "serde_json",
  "tracing",
  "tracing-subscriber",
 ]
