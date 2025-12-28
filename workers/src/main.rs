@@ -42,9 +42,9 @@ async fn main() {
         }
     };
 
-    // for (ref header, ref value) in response.headers() {
-    //     println!("* {}: {:?}", header, value);
-    // }
+    for (ref header, ref value) in response.headers() {
+        println!("* {}: {:?}", header, value);
+    }
 
     let (write_stream, mut read) = ws_stream.split();
     let mut write = Some(write_stream);
