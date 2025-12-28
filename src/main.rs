@@ -59,18 +59,24 @@ async fn echo(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Er
             match msg {
                 Ok(AggregatedMessage::Text(text)) => {
                     println!("recv : {}", text);
-                    let usr = serde_json::from_str::<Username>(&text).unwrap();
-                    if usr.username == "bot" {
-                        let log_resp = LoginResponse {
-                            status: "success".to_string(),
-                            cmd: "BTCUSDT".to_string(),
-                        };
-                        let txt_resp = serde_json::to_string(&log_resp).unwrap();
 
-                        session.text(txt_resp).await.unwrap();
+                    let usr = serde_json::from_str::<Username>(&text);
+                    match usr {
+                        Ok(u) => {
+                            if u.username == "bot" {
+                                let log_resp = LoginResponse {
+                                    status: "success".to_string(),
+                                    cmd: "BTCUSDT".to_string(),
+                                };
+                                let txt_resp = serde_json::to_string(&log_resp).unwrap();
+
+                                session.text(txt_resp).await.unwrap();
+                            }
+                        }
+                        Err(_) => {
+                            println!("recv: {}", text);
+                        }
                     }
-
-                    // session.text("").await.unwrap();
                 }
                 Ok(AggregatedMessage::Binary(bin)) => {
                     session.binary(bin).await.unwrap();
