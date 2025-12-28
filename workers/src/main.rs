@@ -34,7 +34,7 @@ async fn main() {
     let url = Url::parse("ws://127.0.0.1:8080/ws").unwrap();
     println!("Connecting to: {}", url);
 
-    let (ws_stream, _response) = match connect_async(url).await {
+    let (ws_stream, response) = match connect_async(url).await {
         Ok(result) => result,
         Err(e) => {
             eprintln!("Failed to connect: {}", e);
