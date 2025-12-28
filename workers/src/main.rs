@@ -1,5 +1,8 @@
 use futures_util::stream::SplitSink;
+
 use futures_util::{SinkExt, StreamExt};
+
+use tokio::time::{Duration, sleep};
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -73,6 +76,7 @@ async fn main() {
 
                             if let Some(w) = write.take() {
                                 println!("write is OK");
+                                let _ = interval_func(w, resp.cmd).await;
                                 // let _ = spawn_write(w, resp.cmd);
                             } else {
                                 println!("write is None");
@@ -113,20 +117,17 @@ async fn main() {
         }
     }
 }
-
-async fn spawn_write(
+async fn interval_func(
     mut write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
     cmd: String,
-) -> tokio::task::JoinHandle<()> {
+) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
         loop {
-            interval.tick().await;
-            let data = fetch_price(cmd.clone()).await;
-            match data {
-                Ok(resp) => {
-                    let msg = format!("{}:{}", resp.symbol, resp.price);
-                    println!("Sending message: {msg}");
+            let price = fetch_price(cmd.clone()).await;
+            match price {
+                Ok(val) => {
+                    let msg = format!("{}:{}", val.symbol, val.price);
+                    println!("{msg}");
                     if let Err(e) = write.send(msg.into()).await {
                         eprintln!("Failed to send message: {}", e);
                         break;
@@ -134,10 +135,13 @@ async fn spawn_write(
                         println!("Message sent successfully");
                     }
                 }
-                Err(_e) => {}
+                Err(_) => {
+                    println!("cannot get data");
+                }
             }
+            sleep(Duration::from_millis(1000)).await;
         }
-    })
+    });
 }
 
 async fn fetch_price(symbol: String) -> Result<BinancePriceResponse, reqwest::Error> {
