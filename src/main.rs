@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use actix_web::{App, Error, HttpResponse, HttpServer, Responder, get, web};
 
 use serde::Serialize;
@@ -41,8 +43,11 @@ async fn main() -> std::io::Result<()> {
     let host = "127.0.0.1:8080";
     info!("Run server at: http://{}", host);
 
-    HttpServer::new(|| {
+    let stocklist = Arc::new(Mutex::new(vec!["BTCUSDT", "ETHUSDT", "SOLBTC", "BNBUSDT"]));
+
+    HttpServer::new(move || {
         App::new()
+            .app_data(web::Data::new(stocklist.clone()))
             .service(hello)
             .service(health_check)
             .service(web::resource("/ws").route(web::get().to(ws_handler::handle)))
