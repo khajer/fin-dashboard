@@ -1,6 +1,7 @@
 use actix_web::{Error, HttpRequest, HttpResponse, rt, web};
 use actix_ws::AggregatedMessage;
 use futures_util::StreamExt as _;
+use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use serde::{Deserialize, Serialize};
@@ -16,7 +17,11 @@ struct Username {
     username: String,
 }
 
-pub async fn handle(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
+pub async fn handle(
+    req: HttpRequest,
+    stream: web::Payload,
+    stocklist: web::Data<Arc<Mutex<Vec<&'static str>>>>,
+) -> Result<HttpResponse, Error> {
     let (res, mut session, stream) = actix_ws::handle(&req, stream)?;
 
     let mut stream = stream
@@ -30,14 +35,19 @@ pub async fn handle(req: HttpRequest, stream: web::Payload) -> Result<HttpRespon
             match msg {
                 Ok(AggregatedMessage::Text(text)) => {
                     println!("recv : {}", text);
-
                     let usr = serde_json::from_str::<Username>(&text);
                     match usr {
                         Ok(u) => {
+                            let mut list = stocklist.lock().unwrap();
+                            if list.is_empty() {
+                                return;
+                            }
+                            let symbol = list.remove(0).to_string();
+                            drop(list);
                             if u.username == "bot" {
                                 let log_resp = LoginResponse {
                                     status: "success".to_string(),
-                                    cmd: "BTCUSDT".to_string(),
+                                    cmd: symbol.clone(),
                                 };
                                 let txt_resp = serde_json::to_string(&log_resp).unwrap();
 
