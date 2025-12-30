@@ -75,11 +75,9 @@ async fn main() {
                             println!("Login successful");
 
                             if let Some(w) = write.take() {
-                                println!("write is OK");
                                 let _ = interval_func(w, resp.cmd).await;
-                                // let _ = spawn_write(w, resp.cmd);
                             } else {
-                                println!("write is None");
+                                println!("errors has happened!!!");
                             }
                             logined = true;
                         }
@@ -127,13 +125,11 @@ async fn interval_func(
             match price {
                 Ok(val) => {
                     let msg = format!("{}:{}", val.symbol, val.price);
-                    println!("{msg}");
                     if let Err(e) = write.send(msg.into()).await {
                         eprintln!("Failed to send message: {}", e);
                         break;
-                    } else {
-                        println!("Message sent successfully");
                     }
+                    println!("{msg}");
                 }
                 Err(_) => {
                     println!("cannot get data");
