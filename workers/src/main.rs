@@ -129,7 +129,6 @@ async fn interval_func(
                         eprintln!("Failed to send message: {}", e);
                         break;
                     }
-                    println!("{msg}");
                 }
                 Err(_) => {
                     println!("cannot get data");
