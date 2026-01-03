@@ -6,11 +6,14 @@ use tokio::time::{Duration, sleep};
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+
 use tokio::net::TcpStream;
 use tokio_tungstenite::MaybeTlsStream;
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use url::Url;
+
+use clap::Command;
 
 #[derive(Debug, Deserialize)]
 struct BinancePriceResponse {
@@ -29,9 +32,15 @@ struct LoginResponse {
     cmd: String,
 }
 
+const HOST: &str = "127.0.0.1:8080";
+
 #[tokio::main]
 async fn main() {
-    let url = Url::parse("ws://127.0.0.1:8080/ws").unwrap();
+    let _matches = Command::new("b0t").version("0.0.1").get_matches();
+
+    let url_path = format!("ws://{}/ws", HOST);
+    let url = Url::parse(&url_path).unwrap();
+
     println!("Connecting to: {}", url);
 
     let (ws_stream, response) = match connect_async(url).await {
