@@ -41,20 +41,27 @@ async fn main() {
     let url_path = format!("ws://{}/ws", HOST);
     let url = Url::parse(&url_path).unwrap();
 
-    println!("Connecting to: {}", url);
+    loop {
+        match connect_async(url.clone()).await {
+            Ok(result) => {
+                let (ws_stream, _response) = result;
+                // for (ref header, ref value) in response.headers() {
+                //     println!("* {}: {:?}", header, value);
+                // }
 
-    let (ws_stream, response) = match connect_async(url).await {
-        Ok(result) => result,
-        Err(e) => {
-            eprintln!("Failed to connect: {}", e);
-            return;
+                cmd_data_socket(ws_stream).await;
+            }
+            Err(e) => {
+                eprintln!("Failed to connect: {}", e);
+                sleep(Duration::from_millis(1000)).await;
+            }
         }
-    };
-
-    for (ref header, ref value) in response.headers() {
-        println!("* {}: {:?}", header, value);
     }
+}
 
+async fn cmd_data_socket(
+    ws_stream: WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+) {
     let (write_stream, mut read) = ws_stream.split();
     let mut write = Some(write_stream);
 
@@ -124,6 +131,7 @@ async fn main() {
         }
     }
 }
+
 async fn interval_func(
     mut write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
     cmd: String,
@@ -134,6 +142,7 @@ async fn interval_func(
             match price {
                 Ok(val) => {
                     let msg = format!("{}:{}", val.symbol, val.price);
+                    println!("{msg}");
                     if let Err(e) = write.send(msg.into()).await {
                         eprintln!("Failed to send message: {}", e);
                         break;
