@@ -33,8 +33,16 @@ async fn health_check() -> Result<impl Responder, Error> {
 }
 
 #[get("/")]
-async fn hello() -> impl Responder {
+async fn index() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
+}
+
+#[get("/dashboard")]
+async fn dashboard() -> impl Responder {
+    let html_content = include_str!("../static/dashboard.html");
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body(html_content)
 }
 
 #[actix_web::main]
@@ -48,8 +56,9 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(stocklist.clone()))
-            .service(hello)
             .service(health_check)
+            .service(index)
+            .service(dashboard)
             .service(web::resource("/ws").route(web::get().to(ws_handler::handle)))
     })
     .bind(host)?
