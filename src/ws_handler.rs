@@ -1,5 +1,5 @@
 use actix_web::{Error, HttpRequest, HttpResponse, rt, web};
-use actix_ws::AggregatedMessage;
+use actix_ws::{AggregatedMessage, Session};
 use futures_util::StreamExt as _;
 use std::sync::{Arc, Mutex};
 use tracing::info;
@@ -21,6 +21,7 @@ pub async fn handle(
     req: HttpRequest,
     stream: web::Payload,
     stocklist: web::Data<Arc<Mutex<Vec<&'static str>>>>,
+    dashboard_clients: web::Data<Arc<Mutex<Vec<Session>>>>,
 ) -> Result<HttpResponse, Error> {
     let (res, mut session, stream) = actix_ws::handle(&req, stream)?;
 
@@ -51,6 +52,18 @@ pub async fn handle(
                                 };
                                 let txt_resp = serde_json::to_string(&log_resp).unwrap();
 
+                                session.text(txt_resp).await.unwrap();
+                            }
+
+                            if u.username == "dashboard" {
+                                let log_resp = LoginResponse {
+                                    status: "success".to_string(),
+                                    cmd: symbol.clone(),
+                                };
+                                let mut clients = dashboard_clients.lock().unwrap();
+                                clients.push(session.clone());
+
+                                let txt_resp = serde_json::to_string(&log_resp).unwrap();
                                 session.text(txt_resp).await.unwrap();
                             }
                         }
