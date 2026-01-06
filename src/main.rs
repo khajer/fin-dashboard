@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use actix_web::{App, Error, HttpResponse, HttpServer, Responder, get, web};
 
+use actix_ws::Session;
 use serde::Serialize;
 use tracing::info;
 use tracing_subscriber::fmt;
@@ -52,10 +53,11 @@ async fn main() -> std::io::Result<()> {
     info!("Run server at: http://{}", host);
 
     let stocklist = Arc::new(Mutex::new(vec!["BTCUSDT", "ETHUSDT", "SOLBTC", "BNBUSDT"]));
-
+    let dashboard_clients: Arc<Mutex<Vec<Session>>> = Arc::new(Mutex::new(Vec::new()));
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(stocklist.clone()))
+            .app_data(web::Data::new(dashboard_clients.clone()))
             .service(health_check)
             .service(index)
             .service(dashboard)
