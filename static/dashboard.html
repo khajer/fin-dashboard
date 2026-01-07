@@ -81,19 +81,19 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <h3>Bitcoin (BTC)</h3>
-                    <div class="value">Loading...</div>
+                    <div class="value" data-symbol="BTCUSDT">Loading...</div>
                 </div>
                 <div class="stat-card">
                     <h3>Ethereum (ETH)</h3>
-                    <div class="value">Loading...</div>
+                    <div class="value" data-symbol="ETHUSDT">Loading...</div>
                 </div>
                 <div class="stat-card">
                     <h3>Solana (SOL)</h3>
-                    <div class="value">Loading...</div>
+                    <div class="value" data-symbol="SOLBTC">Loading...</div>
                 </div>
                 <div class="stat-card">
                     <h3>Binance Coin (BNB)</h3>
-                    <div class="value">Loading...</div>
+                    <div class="value" data-symbol="BNBUSDT">Loading...</div>
                 </div>
             </div>
 
@@ -109,8 +109,7 @@
                 ws = new WebSocket("ws://localhost:8080/ws");
 
                 ws.onopen = function () {
-                    statusEle.textContent =
-                        "WebSocket connection status: Connected";
+                    statusEle.textContent = "status: Connected";
                     statusEle.style.background = "#e8f5e9";
                     statusEle.style.color = "#2e7d32";
 
@@ -121,6 +120,15 @@
                     try {
                         const data = JSON.parse(event.data);
                         console.log("Received:", data);
+
+                        const valueElement = document.querySelector(
+                            `.value[data-symbol="${data.symbol}"]`,
+                        );
+                        if (valueElement) {
+                            valueElement.textContent = data.price;
+                        } else {
+                            console.log("Symbol not found:", data.symbol);
+                        }
                     } catch (e) {
                         console.error("Error parsing message:", e);
                     }
