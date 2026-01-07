@@ -17,6 +17,11 @@ struct Username {
     username: String,
 }
 
+struct BinancePrice {
+    symbol: String,
+    price: String,
+}
+
 pub async fn handle(
     req: HttpRequest,
     stream: web::Payload,
@@ -35,42 +40,14 @@ pub async fn handle(
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(AggregatedMessage::Text(text)) => {
-                    println!("recv : {}", text);
-                    let usr = serde_json::from_str::<Username>(&text);
-                    match usr {
-                        Ok(u) => {
-                            let mut list = stocklist.lock().unwrap();
-                            if list.is_empty() {
-                                return;
-                            }
-                            let symbol = list.remove(0).to_string();
-                            drop(list);
-                            if u.username == "bot" {
-                                let log_resp = LoginResponse {
-                                    status: "success".to_string(),
-                                    cmd: symbol.clone(),
-                                };
-                                let txt_resp = serde_json::to_string(&log_resp).unwrap();
-
-                                session.text(txt_resp).await.unwrap();
-                            }
-
-                            if u.username == "dashboard" {
-                                let log_resp = LoginResponse {
-                                    status: "success".to_string(),
-                                    cmd: symbol.clone(),
-                                };
-                                let mut clients = dashboard_clients.lock().unwrap();
-                                clients.push(session.clone());
-
-                                let txt_resp = serde_json::to_string(&log_resp).unwrap();
-                                session.text(txt_resp).await.unwrap();
-                            }
-                        }
-                        Err(_) => {
-                            println!("recv: {}", text);
-                        }
-                    }
+                    info!("recv : {}", text);
+                    parse_login_text(
+                        &text,
+                        stocklist.clone(),
+                        dashboard_clients.clone(),
+                        session.clone(),
+                    )
+                    .await;
                 }
                 Ok(AggregatedMessage::Binary(bin)) => {
                     session.binary(bin).await.unwrap();
@@ -85,4 +62,50 @@ pub async fn handle(
     });
 
     Ok(res)
+}
+
+async fn parse_login_text(
+    text: &str,
+    stocklist: web::Data<Arc<Mutex<Vec<&'static str>>>>,
+    dashboard_clients: web::Data<Arc<Mutex<Vec<Session>>>>,
+    mut session: Session,
+) -> Result<(), Error> {
+    let usr = serde_json::from_str::<Username>(&text);
+    match usr {
+        Ok(u) => {
+            let mut list = stocklist.lock().unwrap();
+            if list.is_empty() {
+                return Ok(());
+            }
+            let symbol = list.remove(0).to_string();
+            drop(list);
+            if u.username == "bot" {
+                let log_resp = LoginResponse {
+                    status: "success".to_string(),
+                    cmd: symbol.clone(),
+                };
+                let txt_resp = serde_json::to_string(&log_resp).unwrap();
+                session.text(txt_resp).await.unwrap();
+                return Ok(());
+            }
+
+            if u.username == "dashboard" {
+                let log_resp = LoginResponse {
+                    status: "success".to_string(),
+                    cmd: symbol.clone(),
+                };
+                let mut clients = dashboard_clients.lock().unwrap();
+                clients.push(session.clone());
+
+                let txt_resp = serde_json::to_string(&log_resp).unwrap();
+                session.text(txt_resp).await.unwrap();
+                return Ok(());
+            }
+            Err(actix_web::error::ErrorBadRequest("Invalid username"))
+        }
+        Err(_) => {
+            info!("recv: {}", text);
+            Err(actix_web::error::ErrorBadRequest("Invalid request format"))
+        }
+    }
 }

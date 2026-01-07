@@ -15,7 +15,7 @@ use url::Url;
 
 use clap::Command;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct BinancePriceResponse {
     symbol: String,
     price: String,
@@ -45,10 +45,6 @@ async fn main() {
         match connect_async(url.clone()).await {
             Ok(result) => {
                 let (ws_stream, _response) = result;
-                // for (ref header, ref value) in response.headers() {
-                //     println!("* {}: {:?}", header, value);
-                // }
-
                 cmd_data_socket(ws_stream).await;
             }
             Err(e) => {
@@ -141,8 +137,8 @@ async fn interval_func(
             let price = fetch_price(cmd.clone()).await;
             match price {
                 Ok(val) => {
-                    let msg = format!("{}:{}", val.symbol, val.price);
-                    println!("{msg}");
+                    let msg = serde_json::to_string(&val).unwrap();
+                    println!("send: {}", msg);
                     if let Err(e) = write.send(msg.into()).await {
                         eprintln!("Failed to send message: {}", e);
                         break;
