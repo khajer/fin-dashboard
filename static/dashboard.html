@@ -78,24 +78,7 @@
             <h1>Financial Dashboard</h1>
             <p class="subtitle">Real-time cryptocurrency monitoring</p>
 
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>Bitcoin (BTC)</h3>
-                    <div class="value" data-symbol="BTCUSDT">Loading...</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Ethereum (ETH)</h3>
-                    <div class="value" data-symbol="ETHUSDT">Loading...</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Solana (SOL)</h3>
-                    <div class="value" data-symbol="SOLBTC">Loading...</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Binance Coin (BNB)</h3>
-                    <div class="value" data-symbol="BNBUSDT">Loading...</div>
-                </div>
-            </div>
+            <div class="stats-grid"></div>
 
             <div class="status">WebSocket connection status: Disconnected</div>
         </div>
@@ -121,13 +104,25 @@
                         const data = JSON.parse(event.data);
                         console.log("Received:", data);
 
-                        const valueElement = document.querySelector(
+                        if (data.symbol == undefined) {
+                            return;
+                        }
+
+                        const statsGrid = document.querySelector(".stats-grid");
+                        let valueElement = document.querySelector(
                             `.value[data-symbol="${data.symbol}"]`,
                         );
+
                         if (valueElement) {
                             valueElement.textContent = data.price;
                         } else {
-                            console.log("Symbol not found:", data.symbol);
+                            const newCard = document.createElement("div");
+                            newCard.className = "stat-card";
+                            newCard.innerHTML = `
+                                <h3>${data.symbol}</h3>
+                                <div class="value" data-symbol="${data.symbol}">${data.price}</div>
+                            `;
+                            statsGrid.appendChild(newCard);
                         }
                     } catch (e) {
                         console.error("Error parsing message:", e);
