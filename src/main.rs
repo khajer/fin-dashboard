@@ -52,7 +52,16 @@ async fn main() -> std::io::Result<()> {
     let host = "127.0.0.1:8080";
     info!("Run server at: http://{}", host);
 
-    let stocklist = Arc::new(Mutex::new(vec!["BTCUSDT", "ETHUSDT", "SOLBTC", "BNBUSDT"]));
+    let stocklist = Arc::new(Mutex::new(vec![
+        "BTCUSDT",
+        "ETHUSDT",
+        "BNBUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "DOTUSDT",
+        "ADAUSDT",
+        "TRXUSDT"
+    ]));
     let dashboard_clients: Arc<Mutex<Vec<Session>>> = Arc::new(Mutex::new(Vec::new()));
     HttpServer::new(move || {
         App::new()
