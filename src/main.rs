@@ -1,11 +1,13 @@
 use std::sync::{Arc, Mutex};
 
 use actix_web::{App, Error, HttpResponse, HttpServer, Responder, get, web};
-
 use actix_ws::Session;
+
 use serde::Serialize;
 use tracing::info;
 use tracing_subscriber::fmt;
+
+const HOST: &str = "127.0.0.1:8080";
 
 #[derive(Serialize)]
 struct HealthStatus {
@@ -49,8 +51,8 @@ async fn dashboard() -> impl Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     setup_logging();
-    let host = "127.0.0.1:8080";
-    info!("Run server at: http://{}", host);
+
+    info!("Run server at: http://{}", HOST);
 
     let stocklist = Arc::new(Mutex::new(vec![
         "BTCUSDT",
@@ -72,7 +74,7 @@ async fn main() -> std::io::Result<()> {
             .service(dashboard)
             .service(web::resource("/ws").route(web::get().to(ws_handler::handle)))
     })
-    .bind(host)?
+    .bind(HOST)?
     .run()
     .await
 }
