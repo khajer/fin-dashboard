@@ -1,18 +1,17 @@
 use futures_util::stream::SplitSink;
-
 use futures_util::{SinkExt, StreamExt};
 
+use serde::{Deserialize, Serialize};
 use tokio::time::{Duration, sleep};
 
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
 
 use tokio::net::TcpStream;
 use tokio_tungstenite::MaybeTlsStream;
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
-use url::Url;
 
+use url::Url;
 use clap::Command;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -37,7 +36,6 @@ const HOST: &str = "127.0.0.1:8080";
 #[tokio::main]
 async fn main() {
     let _matches = Command::new("b0t").version("0.0.1").get_matches();
-
     let url_path = format!("ws://{}/ws", HOST);
     let url = Url::parse(&url_path).unwrap();
 
@@ -65,7 +63,7 @@ async fn cmd_data_socket(
     let usr = Username {
         username: "bot".to_string(),
     };
-    println!("Username: {:?}", usr);
+
     let message = serde_json::to_string(&usr).unwrap();
 
     if let Some(ref mut w) = write {
@@ -117,7 +115,6 @@ async fn cmd_data_socket(
                 println!("Received pong: {:?}", data);
             }
             Ok(Message::Frame(_)) => {
-                // Raw frame, continue processing
                 continue;
             }
             Err(e) => {
