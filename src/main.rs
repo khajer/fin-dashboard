@@ -8,6 +8,7 @@ use tracing::info;
 use tracing_subscriber::fmt;
 
 const HOST: &str = "127.0.0.1:8080";
+const CURR_VERSION: &str = "1.0.0";
 
 #[derive(Serialize)]
 struct HealthStatus {
@@ -30,7 +31,7 @@ fn setup_logging() {
 async fn health_check() -> Result<impl Responder, Error> {
     let status = HealthStatus {
         status: "ok".to_string(),
-        version: Some("1.0.0".to_string()),
+        version: Some(CURR_VERSION.to_string()),
     };
     Ok(web::Json(status))
 }
