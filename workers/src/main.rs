@@ -32,10 +32,13 @@ struct LoginResponse {
 }
 
 const HOST: &str = "127.0.0.1:8080";
+const BOT_NAME: &str = "b0t";
+const CURR_VERSION: &str = "0.0.1";
+const BOT_USR: &str = "bot";
 
 #[tokio::main]
 async fn main() {
-    let _matches = Command::new("b0t").version("0.0.1").get_matches();
+    let _matches = Command::new(BOT_NAME).version(CURR_VERSION).get_matches();
     let url_path = format!("ws://{}/ws", HOST);
     let url = Url::parse(&url_path).unwrap();
 
@@ -59,9 +62,8 @@ async fn cmd_data_socket(
     let (write_stream, mut read) = ws_stream.split();
     let mut write = Some(write_stream);
 
-    // bot login
     let usr = Username {
-        username: "bot".to_string(),
+        username: BOT_USR.to_string(),
     };
 
     let message = serde_json::to_string(&usr).unwrap();
