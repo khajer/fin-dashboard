@@ -6,6 +6,10 @@ use tracing::info;
 
 use serde::{Deserialize, Serialize};
 
+const USR_BOT: &str = "bot";
+const USR_DASHBOARD: &str = "dashboard";
+const MSG_SUCCESS: &str = "success";
+
 #[derive(Debug, Serialize)]
 struct LoginResponse {
     status: String,
@@ -41,14 +45,13 @@ pub async fn handle(
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(AggregatedMessage::Text(text)) => {
-                    info!("recv : {}", text);
+                    info!("recv : {text}");
                     let parse_login = parse_login_text(
                         &text,
                         stocklist.clone(),
                         dashboard_clients.clone(),
                         session.clone(),
-                    )
-                    .await;
+                    ).await;
 
                     match parse_login {
                         Ok(_) => {}
@@ -63,12 +66,10 @@ pub async fn handle(
                 Ok(AggregatedMessage::Ping(msg)) => {
                     session.pong(&msg).await.unwrap();
                 }
-
                 _ => {}
             }
         }
     });
-
     Ok(res)
 }
 
@@ -87,9 +88,9 @@ pub async fn parse_login_text(
             }
             let symbol = list.remove(0).to_string();
             drop(list);
-            if u.username == "bot" {
+            if u.username == USR_BOT {
                 let log_resp = LoginResponse {
-                    status: "success".to_string(),
+                    status: MSG_SUCCESS.to_string(),
                     cmd: symbol.clone(),
                 };
                 let txt_resp = serde_json::to_string(&log_resp).unwrap();
@@ -97,9 +98,9 @@ pub async fn parse_login_text(
                 return Ok(());
             }
 
-            if u.username == "dashboard" {
+            if u.username == USR_DASHBOARD {
                 let log_resp = LoginResponse {
-                    status: "success".to_string(),
+                    status: MSG_SUCCESS.to_string(),
                     cmd: symbol.clone(),
                 };
                 let mut clients = dashboard_clients.lock().unwrap();
@@ -112,7 +113,7 @@ pub async fn parse_login_text(
             Err(actix_web::error::ErrorBadRequest("Invalid username"))
         }
         Err(_) => {
-            info!("recv: {}", text);
+            info!("recv: {text}");
             Err(actix_web::error::ErrorBadRequest("Invalid request format"))
         }
     }
@@ -124,7 +125,7 @@ pub async fn parse_command(text: &str, dashboard_clients: web::Data<Arc<Mutex<Ve
             let mut clients = dashboard_clients.lock().unwrap();
             for client in clients.iter_mut() {
                 let msg = serde_json::to_string(&data).unwrap();
-                info!("send: {}", msg);
+                info!("send: {msg}");
                 client.text(msg).await.unwrap();
             }
         }
