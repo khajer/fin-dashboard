@@ -53,7 +53,7 @@ async fn dashboard() -> impl Responder {
 async fn main() -> std::io::Result<()> {
     setup_logging();
 
-    info!("Run server at: http://{}", HOST);
+    info!("Run server at: http://{HOST}");
 
     let stocklist = Arc::new(Mutex::new(vec![
         "BTCUSDT",
