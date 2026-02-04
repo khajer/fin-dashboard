@@ -54,7 +54,9 @@ pub async fn handle(
                     ).await;
 
                     match parse_login {
-                        Ok(_) => {}
+                        Ok(_) => {
+                            info!("Login successful");
+                        }
                         Err(_err) => {
                             parse_command(&text, dashboard_clients.clone()).await;
                         }
@@ -189,11 +191,11 @@ mod tests {
     #[test]
     fn test_login_response_serialization() {
         let response = LoginResponse {
-            status: "success".to_string(),
+            status: MSG_SUCCESS.to_string(),
             cmd: "BTCUSDT".to_string(),
         };
         let json = serde_json::to_string(&response).unwrap();
-        assert!(json.contains("success"));
+        assert!(json.contains(MSG_SUCCESS));
         assert!(json.contains("BTCUSDT"));
     }
 
