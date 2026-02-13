@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - fin-dashboard-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Note: Podman Compose doesn't fully support deploy.replicas
+  # To run multiple workers, use: podman-compose up -d --scale workers=5
+  workers:
+    build:
+      context: ./workers
+      dockerfile: Dockerfile
+    depends_on:
+      - web
+    networks:
+      - fin-dashboard-network
+    environment:
+      - RUST_LOG=info
+    restart: unless-stopped
+
+networks:
+  fin-dashboard-network:
+    driver: bridge
